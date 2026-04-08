@@ -17,8 +17,10 @@ from openenv.core.env_server.interfaces import Environment
 from openenv.core.env_server.types import State
 
 try:
+    from .grading import DynapriceTaskGraderSuite
     from ..models import DynapriceAction, DynapriceObservation
 except ImportError:
+    from server.grading import DynapriceTaskGraderSuite
     from models import DynapriceAction, DynapriceObservation
 
 
@@ -35,6 +37,8 @@ class DynapriceEnvironment(Environment):
 
     def __init__(self):
         """Initialize the dynaprice_env environment."""
+        self.task_grader_suite = DynapriceTaskGraderSuite()
+        super().__init__(rubric=self.task_grader_suite)
         self._state = State(episode_id=str(uuid4()), step_count=0)
         
         # Environment configuration
@@ -50,6 +54,8 @@ class DynapriceEnvironment(Environment):
         self._setup_task("easy")
 
     def _setup_task(self, difficulty: str):
+        if difficulty not in {"easy", "medium", "hard"}:
+            raise ValueError(f"Unknown difficulty: {difficulty}")
         self.task_id = difficulty
         if difficulty == "easy":
             # Normal balanced state
@@ -78,10 +84,10 @@ class DynapriceEnvironment(Environment):
             DynapriceObservation with initial market conditions
         """
         self._state = State(episode_id=str(uuid4()), step_count=0)
+        self._reset_rubric()
         
         # Randomly select a task
-        tasks = ["easy", "medium", "hard"]
-        self._setup_task(random.choice(tasks))
+        self._setup_task(random.choice(self.task_grader_suite.TASK_NAMES))
         
         # Add slight initial stochastic noise
         self.demand = max(0.0, self.base_demand + random.uniform(-10, 10))
@@ -93,7 +99,8 @@ class DynapriceEnvironment(Environment):
             surge_multiplier=self.surge_multiplier,
             time_step=self._state.step_count,
             done=False,
-            reward=0.0,
+            reward=None,
+            metadata={"task_id": self.task_id},
         )
 
     def step(self, action: DynapriceAction) -> DynapriceObservation:  # type: ignore[override]
@@ -136,31 +143,43 @@ class DynapriceEnvironment(Environment):
         surge_penalty = max(0.0, self.surge_multiplier - 2.0) * 100.0
         
         raw_reward = revenue - wait_penalty - surge_penalty
-        
-        # Normalize reward between 0.0 and 1.0
-        # Assume max theoretical revenue around ~400 units * 10 fare * 3 surge = ~12000
-        # If penalty outweighs revenue, clip to 0.0
-        theoretical_max = 12000.0
-        normalized_reward = max(0.0, min(1.0, raw_reward / theoretical_max))
 
         done = self._state.step_count >= self.max_steps
 
-        return DynapriceObservation(
+        metadata = {
+            "task_id": self.task_id,
+            "raw_reward": raw_reward,
+            "completed_rides": completed_rides,
+            "revenue": revenue,
+            "wait_penalty": wait_penalty,
+            "surge_penalty": surge_penalty,
+        }
+
+        observation = DynapriceObservation(
             demand=self.demand,
             supply=self.supply,
             surge_multiplier=self.surge_multiplier,
             time_step=self._state.step_count,
             done=done,
-            reward=normalized_reward,
-            metadata={
-                "task_id": self.task_id,
-                "raw_reward": raw_reward,
-                "completed_rides": completed_rides,
-                "revenue": revenue,
-                "wait_penalty": wait_penalty,
-                "surge_penalty": surge_penalty
-            },
+            reward=self._apply_rubric(
+                action,
+                DynapriceObservation(
+                    demand=self.demand,
+                    supply=self.supply,
+                    surge_multiplier=self.surge_multiplier,
+                    time_step=self._state.step_count,
+                    done=done,
+                    reward=None,
+                    metadata=metadata,
+                ),
+            ),
+            metadata=metadata,
         )
+
+        metadata["task_scores"] = self.task_grader_suite.task_scores(action, observation)
+        metadata["active_task_score"] = observation.reward
+
+        return observation
 
     @property
     def state(self) -> State:

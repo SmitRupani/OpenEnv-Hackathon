@@ -48,12 +48,12 @@ Or simply create a new Space on [Hugging Face](https://huggingface.co/spaces), s
 ## Environment Specifications
 
 ### Tasks / Graders
-The environment samples one of three difficulty contexts natively on environment `.reset()` logic:
-- `easy`: Standard equilibrium where supply perfectly offsets demand at standard multipliers.
-- `medium`: Extreme demand spike events requiring the agent to rapidly step-up surge barriers safely to cap losses.
-- `hard`: Volatile timezone variations where random massive permutations of logic decay the baseline elasticity dynamically across standard evaluation steps.
+The environment exposes three explicit grader-backed tasks, and `.reset()` samples one of them:
+- `easy`: Balanced market conditions with a preference for steady matching and moderate surge.
+- `medium`: Demand-spike conditions that reward faster surge adjustments and lower wait penalties.
+- `hard`: Volatile supply conditions that reward stability under shocks and disciplined surge control.
 
-Score tracking (`reward`) automatically normalizes based on bounded metric caps guaranteeing all grader emissions land reliably between `0.0` to `1.0`.
+Each step returns an active task score in the open interval `(0, 1)`. The full task breakdown is also exposed in `metadata.task_scores`, which contains `easy`, `medium`, and `hard` grader outputs, each strictly between `0` and `1`.
 
 ### Action Space (Discrete)
 `DynapriceAction`: integer
@@ -63,9 +63,9 @@ Score tracking (`reward`) automatically normalizes based on bounded metric caps 
 
 ### Observation Space
 `DynapriceObservation`: mapped object
-- `demand` (float): Current rider requested tasks in-grid.
-- `supply` (float): Current driver idle availability.
-- `surge_multiplier` (float): Global surge state context index.
-- `time_step` (int): Active temporal loop counter terminating at 50 increments.
-- `reward` (float): Bound normalized step grade mapped dynamically against standard theoretical revenue limits.
-- `metadata` (dict): Verbose JSON block exposing deep internal parameters like raw wait penalties and actual matching volume.
+- `demand` (float): Current rider demand.
+- `supply` (float): Current driver availability.
+- `surge_multiplier` (float): Current surge multiplier.
+- `time_step` (int): Active time-step counter terminating at 50 increments.
+- `reward` (float): Active grader score, always in the open interval `(0, 1)`.
+- `metadata` (dict): Internal metrics, including `task_id`, `raw_reward`, and `task_scores` for all three graders.

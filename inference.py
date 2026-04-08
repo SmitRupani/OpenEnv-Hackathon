@@ -1,6 +1,4 @@
 import os
-import json
-import logging
 from openai import OpenAI
 from client import DynapriceEnv
 from models import DynapriceAction
@@ -23,7 +21,7 @@ def run_agent():
     )
 
     env_url = "http://localhost:8000"
-    print(f"Connecting to environment at {env_url}...")
+    print(f"[START] Connecting to environment at {env_url}")
 
     total_reward = 0.0
     
@@ -70,7 +68,7 @@ def run_agent():
             result = env.step(step_action)
             obs = result.observation
             done = result.done
-            step_reward = result.reward if result.reward else 0.0
+            step_reward = result.reward if result.reward is not None else 0.0
             
             total_reward += step_reward
 
