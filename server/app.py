@@ -30,27 +30,33 @@ Usage:
 
 try:
     from openenv.core.env_server.http_server import create_app
-except Exception as e:  # pragma: no cover
-    raise ImportError(
-        "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
-    ) from e
+except Exception:  # pragma: no cover
+    create_app = None
 
 try:
     from ..models import DynapriceAction, DynapriceObservation
     from .dynaprice_env_environment import DynapriceEnvironment
 except ImportError:
-    from models import DynapriceAction, DynapriceObservation
-    from server.dynaprice_env_environment import DynapriceEnvironment
+    try:
+        from models import DynapriceAction, DynapriceObservation
+        from server.dynaprice_env_environment import DynapriceEnvironment
+    except ImportError:
+        DynapriceAction = None
+        DynapriceObservation = None
+        DynapriceEnvironment = None
 
 
 # Create the app with web interface and README integration
-app = create_app(
-    DynapriceEnvironment,
-    DynapriceAction,
-    DynapriceObservation,
-    env_name="dynaprice_env",
-    max_concurrent_envs=1,  # increase this number to allow more concurrent WebSocket sessions
-)
+if create_app is not None and DynapriceEnvironment is not None:
+    app = create_app(
+        DynapriceEnvironment,
+        DynapriceAction,
+        DynapriceObservation,
+        env_name="dynaprice_env",
+        max_concurrent_envs=1,  # increase this number to allow more concurrent WebSocket sessions
+    )
+else:
+    app = None
 
 
 def main(host: str = "0.0.0.0", port: int = 8000):
