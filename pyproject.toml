@@ -41,5 +41,7 @@ server = "dynaprice_env.server.app:main"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["dynaprice_env", "dynaprice_env.server"]
-package-dir = { "dynaprice_env" = ".", "dynaprice_env.server" = "server" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dynaprice_env*", "server*"]

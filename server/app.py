@@ -1,90 +1,14 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
-
 """
-FastAPI application for the Dynaprice Env Environment.
-
-This module creates an HTTP server that exposes the DynapriceEnvironment
-over HTTP and WebSocket endpoints, compatible with EnvClient.
-
-Endpoints:
-    - POST /reset: Reset the environment
-    - POST /step: Execute an action
-    - GET /state: Get current environment state
-    - GET /schema: Get action/observation schemas
-    - WS /ws: WebSocket endpoint for persistent sessions
-
-Usage:
-    # Development (with auto-reload):
-    uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
-
-    # Production:
-    uvicorn server.app:app --host 0.0.0.0 --port 8000 --workers 4
-
-    # Or run directly:
-    python -m server.app
+Compatibility OpenEnv entrypoint expected by validation tooling.
 """
 
-try:
-    from openenv.core.env_server.http_server import create_app
-except Exception:  # pragma: no cover
-    create_app = None
-
-try:
-    from ..models import DynapriceAction, DynapriceObservation
-    from .dynaprice_env_environment import DynapriceEnvironment
-except ImportError:
-    try:
-        from models import DynapriceAction, DynapriceObservation
-        from server.dynaprice_env_environment import DynapriceEnvironment
-    except ImportError:
-        DynapriceAction = None
-        DynapriceObservation = None
-        DynapriceEnvironment = None
+from dynaprice_env.server.app import app
 
 
-# Create the app with web interface and README integration
-if create_app is not None and DynapriceEnvironment is not None:
-    app = create_app(
-        DynapriceEnvironment,
-        DynapriceAction,
-        DynapriceObservation,
-        env_name="dynaprice_env",
-        max_concurrent_envs=1,  # increase this number to allow more concurrent WebSocket sessions
-    )
-else:
-    app = None
-
-
-def main(host: str = "0.0.0.0", port: int = 8000):
-    """
-    Entry point for direct execution via uv run or python -m.
-
-    This function enables running the server without Docker:
-        uv run --project . server
-        uv run --project . server --port 8001
-        python -m dynaprice_env.server.app
-
-    Args:
-        host: Host address to bind to (default: "0.0.0.0")
-        port: Port number to listen on (default: 8000)
-
-    For production deployments, consider using uvicorn directly with
-    multiple workers:
-        uvicorn dynaprice_env.server.app:app --workers 4
-    """
+def main() -> None:
     import uvicorn
-
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8000)
-    args = parser.parse_args()
-    main(port=args.port)
+    main()
