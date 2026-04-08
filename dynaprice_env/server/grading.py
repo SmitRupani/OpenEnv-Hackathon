@@ -14,9 +14,15 @@ def _coerce_float(value: Any, default: float = 0.0) -> float:
 
 
 def _squash_to_open_interval(signal: float, scale: float) -> float:
-    if scale <= 0.0:
+    epsilon = 1e-6
+    if not math.isfinite(signal):
+        signal = 0.0
+    if not math.isfinite(scale) or scale <= 0.0:
         scale = 1.0
-    return 0.05 + 0.9 * (0.5 + 0.5 * math.tanh(signal / scale))
+
+    normalized = 0.5 + math.atan(signal / scale) / math.pi
+    normalized = max(0.0, min(1.0, normalized))
+    return epsilon + (1.0 - 2.0 * epsilon) * normalized
 
 
 class TaskGrader(Rubric):
