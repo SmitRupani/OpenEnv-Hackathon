@@ -1,0 +1,24 @@
+name: Sync to Hugging Face hub
+
+on:
+  push:
+    branches: [main]
+  # Enables triggering workflow manually from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Push to hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Set up authentication
+          git remote add space https://SmitRupani:$HF_TOKEN@huggingface.co/spaces/SmitRupani/OpenEnv-Hackathon
+          # Force push to sync the Space exactly with the GitHub main branch
+          git push --force space main
