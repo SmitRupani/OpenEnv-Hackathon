@@ -93,15 +93,34 @@ class DynapriceEnvironment(Environment):
         self.demand = max(0.0, self.base_demand + random.uniform(-10, 10))
         self.supply = max(0.0, self.base_supply + random.uniform(-10, 10))
 
-        return DynapriceObservation(
+        metadata = {"task_id": self.task_id}
+        
+        obs_for_rubric = DynapriceObservation(
             demand=self.demand,
             supply=self.supply,
             surge_multiplier=self.surge_multiplier,
             time_step=self._state.step_count,
             done=False,
             reward=None,
-            metadata={"task_id": self.task_id},
+            metadata=metadata,
         )
+        
+        reward = self._apply_rubric(None, obs_for_rubric)
+
+        observation = DynapriceObservation(
+            demand=self.demand,
+            supply=self.supply,
+            surge_multiplier=self.surge_multiplier,
+            time_step=self._state.step_count,
+            done=False,
+            reward=reward,
+            metadata=metadata,
+        )
+        
+        metadata["task_scores"] = self.task_grader_suite.task_scores(None, observation)
+        metadata["active_task_score"] = observation.reward
+
+        return observation
 
     def step(self, action: DynapriceAction) -> DynapriceObservation:  # type: ignore[override]
         """
