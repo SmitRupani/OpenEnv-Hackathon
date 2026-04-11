@@ -15,16 +15,17 @@ def _coerce_float(value: Any, default: float = 0.0) -> float:
 
 def _squash_to_open_interval(signal: float, scale: float) -> float:
     if not math.isfinite(signal):
-        signal = 0.0
+        signal = 0.01
     if not math.isfinite(scale) or scale <= 0.0:
-        scale = 1.0
+        scale = 0.99
 
-    normalized = 0.5 + math.atan(signal / scale) / math.pi
+    # atan maps (-inf, inf) -> (-pi/2, pi/2), so normalized is strictly in (0, 1)
+    normalized = 0.5 + (math.atan(signal / scale) / math.pi)
     
-    # Strictly keep the final score between 0 and 1
-    min_val = 0.05
-    max_val = 0.95
-    return min(max(round(normalized, 4), min_val), max_val)
+    # Strictly clamp to (0.05, 0.95) as per known-good examples
+    # Use round(..., 4) then clamp
+    rounded = round(normalized, 4)
+    return min(max(rounded, 0.05), 0.95)
 
 
 class TaskGrader(Rubric):
@@ -122,7 +123,10 @@ class DynapriceTaskGraderSuite(Rubric):
         return getattr(self, task_id)(action, observation)
 
     def task_scores(self, action: Any, observation: Any) -> Dict[str, float]:
-        return {
-            task_name: getattr(self, task_name)(action, observation)
-            for task_name in self.TASK_NAMES
-        }
+        # Return all task scores, ensuring they are all strictly in (0.05, 0.95)
+        scores = {}
+        for task_name in self.TASK_NAMES:
+            score = getattr(self, task_name)(action, observation)
+            # Extra safety check to ensure compliance with hackathon rules
+            scores[task_name] = min(max(round(score, 4), 0.05), 0.95)
+        return scores
