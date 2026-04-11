@@ -22,8 +22,8 @@ def _squash_to_open_interval(signal: float, scale: float) -> float:
     normalized = 0.5 + math.atan(signal / scale) / math.pi
     
     # Strictly keep the final score between 0 and 1
-    min_val = 0.0001
-    max_val = 0.9999
+    min_val = 0.05
+    max_val = 0.95
     return min(max(round(normalized, 4), min_val), max_val)
 
 
